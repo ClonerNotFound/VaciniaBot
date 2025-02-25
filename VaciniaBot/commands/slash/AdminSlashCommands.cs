@@ -10,7 +10,7 @@ namespace VaciniaBot.commands.slash
 {
     public class AdminSlashCommands : ApplicationCommandModule
     {
-        [SlashCommand(name: "ticketmessage", description: "test command")]
+        [SlashCommand(name: "ticket", description: "Отправка сообщение с выпадающим меню в канал для создания тикетов")]
         public async Task TestSlashCommand(InteractionContext ctx)
         {
             var options = new List<DiscordSelectComponentOption>
@@ -28,7 +28,7 @@ namespace VaciniaBot.commands.slash
                 Color = DiscordColor.Azure
             };
 
-            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embedMessage).AddComponents(dropdown).AsEphemeral(true)    );
+            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embedMessage).AddComponents(dropdown).AsEphemeral(true));
         }
     }
 }

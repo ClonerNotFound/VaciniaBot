@@ -277,6 +277,10 @@ namespace VaciniaBot
         }
         private static async Task CreateTicket(DiscordClient sender, ModalSubmitEventArgs args)
         {
+            var jsonReader = new JSONReader();
+            await jsonReader.ReadJson();
+            var adminRoles = jsonReader.AdminRoles;
+
             if (args.Interaction.Data.CustomId == "whitelist_modal")
             {
                 var nickname = args.Values["nickname"];
@@ -301,6 +305,27 @@ namespace VaciniaBot
 
                 var guild = await sender.GetGuildAsync(args.Interaction.Guild.Id);
 
+                var member = await guild.GetMemberAsync(args.Interaction.User.Id);
+
+                var overwrites = new List<DiscordOverwriteBuilder>
+        {
+            new DiscordOverwriteBuilder(guild.EveryoneRole)
+                .Deny(Permissions.AccessChannels),
+
+            new DiscordOverwriteBuilder(member)
+                .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
+        };
+
+                foreach (var roleId in adminRoles)
+                {
+                    var role = guild.GetRole(roleId);
+                    if (role != null)
+                    {
+                        overwrites.Add(new DiscordOverwriteBuilder(role)
+                            .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
+                    }
+                }
+
                 var category = guild.Channels.Values.FirstOrDefault(c => c.Name == "Заявки" && c.Type == ChannelType.Category);
                 if (category == null)
                 {
@@ -308,7 +333,7 @@ namespace VaciniaBot
                 }
 
                 var channelName = $"whitelist-заявка-{nickname.Replace(" ", "-")}";
-                var channel = await guild.CreateTextChannelAsync(channelName, parent: category);
+                var channel = await guild.CreateTextChannelAsync(channelName, parent: category, overwrites: overwrites);
 
                 var acceptButton = new DiscordButtonComponent(ButtonStyle.Success, "accept_button", "Принять");
                 var rejectButton = new DiscordButtonComponent(ButtonStyle.Danger, "reject_button", "Отклонить");
@@ -331,11 +356,28 @@ namespace VaciniaBot
 
                 var guild = await sender.GetGuildAsync(args.Interaction.Guild.Id);
 
-                var jsonReader = new JSONReader();
-                await jsonReader.ReadJson();
-                var adminRoles = jsonReader.AdminRoles;
+                var member = await guild.GetMemberAsync(args.Interaction.User.Id);
 
-                var overwrites = new List<DiscordOverwriteBuilder>();
+                var overwrites = new List<DiscordOverwriteBuilder>
+        {
+            new DiscordOverwriteBuilder(guild.EveryoneRole)
+                .Deny(Permissions.AccessChannels),
+
+            new DiscordOverwriteBuilder(member)
+                .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
+        };
+
+                foreach (var roleId in adminRoles)
+                {
+                    var role = guild.GetRole(roleId);
+                    if (role != null)
+                    {
+                        overwrites.Add(new DiscordOverwriteBuilder(role)
+                            .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
+                    }
+                }
+
+                await jsonReader.ReadJson();
 
                 var everyoneRole = guild.EveryoneRole;
                 overwrites.Add(new DiscordOverwriteBuilder(everyoneRole)
@@ -358,7 +400,7 @@ namespace VaciniaBot
                 }
 
                 var channelName = $"жалоба-{violatorNickname.ToLower().Replace(" ", "-")}";
-                var channel = await guild.CreateTextChannelAsync(channelName, parent: category);
+                var channel = await guild.CreateTextChannelAsync(channelName, parent: category, overwrites: overwrites);
 
                 var reportEmbed = new DiscordEmbedBuilder()
                 {

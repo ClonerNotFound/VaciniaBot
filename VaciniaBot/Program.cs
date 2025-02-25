@@ -1,8 +1,5 @@
-﻿using System.IO;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using VaciniaBot.commands;
 using VaciniaBot.commands.slash;
@@ -12,10 +9,7 @@ using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.SlashCommands;
-using Google.Apis.YouTube.v3.Data;
 using System;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Bson;
 using System.Threading;
 
 namespace VaciniaBot
@@ -52,6 +46,7 @@ namespace VaciniaBot
 
             var slashCommandsConfig = Client.UseSlashCommands();
             slashCommandsConfig.RegisterCommands<BasicSlashCommands>();
+            slashCommandsConfig.RegisterCommands<PlayerCommands>();
 
             Commands = Client.UseCommandsNext(commandsConfig);
             Commands.RegisterCommands<TestCommands>();
@@ -404,6 +399,11 @@ namespace VaciniaBot
         }
         private static Task ClientOnReady(DiscordClient sender, ReadyEventArgs args)
         {
+            Console.WriteLine($"Бот подключен как: {sender.CurrentUser.Username}");
+            Console.WriteLine($"ID бота: {sender.CurrentUser.Id}");
+            Console.WriteLine($"Количество серверов: {sender.Guilds.Count}");
+            Console.WriteLine("Бот успешно запущен и готов к работе!");
+
             return Task.CompletedTask;
         }
     }

@@ -1,0 +1,7 @@
+﻿<linker>
+  <assembly fullname="System.Diagnostics.DiagnosticSource">
+    <type fullname="System.Diagnostics.Metrics.MetricsEventSource">
+      <method name="GetInstance" />
+    </type>
+  </assembly>
+</linker>

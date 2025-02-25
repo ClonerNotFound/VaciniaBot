@@ -3,5 +3,14 @@
     "prefix": "!",
     "adminRoles": [ "0000000000000000000", "0000000000000000000", "0000000000000000000" ],
     "logChannelId": "0000000000000000000",
-    "consoleChannel": "0000000000000000000"
+    "consoleChannel": "0000000000000000000",
+    "mysql": {
+        "server": "server",
+        "port": 3306,
+        "database": "database",
+        "user": "user",
+        "password": "password",
+        "table": "name_table",
+        "column": "name_column"
+    }
 }

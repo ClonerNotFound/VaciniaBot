@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace VaciniaBot.config
@@ -14,6 +11,7 @@ namespace VaciniaBot.config
         public List<ulong> AdminRoles { get; set; }
         public ulong LogChannelId { get; set; }
         public ulong СonsoleChannel { get; set; }
+        public MySQLConfig MySQL { get; set; }
         public async Task ReadJson()
         {
             using (StreamReader sr = new StreamReader("config.json"))
@@ -26,6 +24,7 @@ namespace VaciniaBot.config
                 AdminRoles = data.AdminRoles;
                 LogChannelId = data.LogChannelId;
                 СonsoleChannel = data.СonsoleChannel;
+                MySQL = data.MySQL;
             }
         }
         private class JSONStructure
@@ -35,6 +34,17 @@ namespace VaciniaBot.config
             public List<ulong> AdminRoles { get; set; }
             public ulong LogChannelId { get; set; }
             public ulong СonsoleChannel { get; set; }
+            public MySQLConfig MySQL { get; set; }
+        }
+        public class MySQLConfig
+        {
+            public string Server { get; set; }
+            public int Port { get; set; }
+            public string Database { get; set; }
+            public string User { get; set; }
+            public string Password { get; set; }
+            public string Table { get; set; }
+            public string Column { get; set; }
         }
     }
 }

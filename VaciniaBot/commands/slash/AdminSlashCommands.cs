@@ -8,7 +8,7 @@ using MySql.Data.MySqlClient;
 
 namespace VaciniaBot.commands.slash
 {
-    public class BasicSlashCommands : ApplicationCommandModule
+    public class AdminSlashCommands : ApplicationCommandModule
     {
         [SlashCommand(name: "ticketmessage", description: "test command")]
         public async Task TestSlashCommand(InteractionContext ctx)

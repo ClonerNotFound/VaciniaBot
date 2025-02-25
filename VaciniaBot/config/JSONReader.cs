@@ -10,7 +10,7 @@ namespace VaciniaBot.config
         public string Prefix { get; set; }
         public List<ulong> AdminRoles { get; set; }
         public ulong LogChannelId { get; set; }
-        public ulong СonsoleChannel { get; set; }
+        public ulong ConsoleChannelId { get; set; }
         public MySQLConfig MySQL { get; set; }
         public async Task ReadJson()
         {
@@ -23,7 +23,7 @@ namespace VaciniaBot.config
                 Prefix = data.Prefix;
                 AdminRoles = data.AdminRoles;
                 LogChannelId = data.LogChannelId;
-                СonsoleChannel = data.СonsoleChannel;
+                ConsoleChannelId = data.ConsoleChannelId;
                 MySQL = data.MySQL;
             }
         }
@@ -33,7 +33,7 @@ namespace VaciniaBot.config
             public string Prefix { get; set; }
             public List<ulong> AdminRoles { get; set; }
             public ulong LogChannelId { get; set; }
-            public ulong СonsoleChannel { get; set; }
+            public ulong ConsoleChannelId { get; set; }
             public MySQLConfig MySQL { get; set; }
         }
         public class MySQLConfig

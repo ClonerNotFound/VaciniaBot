@@ -178,10 +178,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="commands\prefix\TestCommands.cs" />
-    <Compile Include="commands\slash\BasicSlashCommands.cs" />
-    <Compile Include="commands\slash\PlayerCommands.cs" />
-    <Compile Include="commands\slash\SayCommands.cs" />
+    <Compile Include="commands\prefix\PrefixCommands.cs" />
+    <Compile Include="commands\slash\AdminSlashCommands.cs" />
+    <Compile Include="commands\slash\UserSlashCommands.cs" />
     <Compile Include="config\JSONReader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

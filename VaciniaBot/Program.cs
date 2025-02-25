@@ -14,7 +14,7 @@ using System.Threading;
 
 namespace VaciniaBot
 {
-    internal class Program
+    public class Program
     {
         public static DiscordClient Client { get; set; }
         public static CommandsNextExtension Commands { get; set; }
@@ -35,7 +35,7 @@ namespace VaciniaBot
             Client = new DiscordClient(discordConfig);
             Client.Ready += ClientOnReady;
             Client.ComponentInteractionCreated += Client_ComponentInteractionCreated;
-            Client.ModalSubmitted += Client_ModalSubmitted;
+            Client.ModalSubmitted += CreateTicket;
 
             var commandsConfig = new CommandsNextConfiguration()
             {
@@ -46,12 +46,11 @@ namespace VaciniaBot
             };
 
             var slashCommandsConfig = Client.UseSlashCommands();
-            slashCommandsConfig.RegisterCommands<BasicSlashCommands>();
-            slashCommandsConfig.RegisterCommands<PlayerCommands>();
-            slashCommandsConfig.RegisterCommands<SayCommands>();
+            slashCommandsConfig.RegisterCommands<AdminSlashCommands>();
+            slashCommandsConfig.RegisterCommands<UserSlashCommands>();
 
             Commands = Client.UseCommandsNext(commandsConfig);
-            Commands.RegisterCommands<TestCommands>();
+            Commands.RegisterCommands<PrefixCommands>();
 
             await Client.ConnectAsync();
             await Task.Delay(-1);
@@ -63,12 +62,11 @@ namespace VaciniaBot
 
             if (args.Interaction.Data.CustomId == "ticket_dropdown")
             {
-                await ModalTicketWindow(sender, args);
+                await ModalWindowTickets(sender, args);
             }
-
             if (args.Interaction.Data.CustomId == "accept_button" || args.Interaction.Data.CustomId == "reject_button" || args.Interaction.Data.CustomId == "invite_button")
             {
-                await HandleWhitelistButtons(sender, args, jsonReader);
+                await WhiteListTicket(sender, args, jsonReader);
             }
             if (args.Interaction.Data.CustomId == "delete_channel_button")
             {
@@ -87,18 +85,10 @@ namespace VaciniaBot
 
             _ = Task.Run(async () =>
             {
-                try
+                await Task.Delay(10000, cancellationToken);
+                if (!cancellationToken.IsCancellationRequested)
                 {
-                    await Task.Delay(10000, cancellationToken);
-
-                    if (!cancellationToken.IsCancellationRequested)
-                    {
-                        await args.Interaction.Channel.DeleteAsync();
-                    }
-                }
-                catch (TaskCanceledException)
-                {
-                    // ничего не делаем
+                    await args.Interaction.Channel.DeleteAsync();
                 }
             });
 
@@ -123,7 +113,7 @@ namespace VaciniaBot
                 }
             };
         }
-        private static async Task ModalTicketWindow(DiscordClient sender, ComponentInteractionCreateEventArgs args)
+        private static async Task ModalWindowTickets(DiscordClient sender, ComponentInteractionCreateEventArgs args)
         {
             var selectedValue = args.Interaction.Data.Values[0];
 
@@ -154,7 +144,7 @@ namespace VaciniaBot
                     break;
             }
         }
-        private static async Task HandleWhitelistButtons(DiscordClient sender, ComponentInteractionCreateEventArgs args, JSONReader jsonReader)
+        private static async Task WhiteListTicket(DiscordClient sender, ComponentInteractionCreateEventArgs args, JSONReader jsonReader)
         {
             await args.Interaction.DeferAsync();
 
@@ -183,11 +173,15 @@ namespace VaciniaBot
                             await logChannel.SendMessageAsync(message);
                         }
 
-                        var consoleChannel = await sender.GetChannelAsync(jsonReader.СonsoleChannel);
+                        var consoleChannel = await sender.GetChannelAsync(jsonReader.ConsoleChannelId);
                         if (consoleChannel != null)
                         {
                             string message = $"/whitelist add {nickname}";
-                            await logChannel.SendMessageAsync(message);
+                            await consoleChannel.SendMessageAsync(message);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Канал для консоли не найден.");
                         }
 
                         var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
@@ -202,18 +196,10 @@ namespace VaciniaBot
 
                         _ = Task.Run(async () =>
                         {
-                            try
+                            await Task.Delay(10000, cancellationToken);
+                            if (!cancellationToken.IsCancellationRequested)
                             {
-                                await Task.Delay(10000, cancellationToken);
-
-                                if (!cancellationToken.IsCancellationRequested)
-                                {
-                                    await args.Interaction.Channel.DeleteAsync();
-                                }
-                            }
-                            catch (TaskCanceledException)
-                            {
-                                // ничего не делаем
+                                await args.Interaction.Channel.DeleteAsync();
                             }
                         });
 
@@ -289,7 +275,7 @@ namespace VaciniaBot
                     break;
             }
         }
-        private static async Task Client_ModalSubmitted(DiscordClient sender, ModalSubmitEventArgs args)
+        private static async Task CreateTicket(DiscordClient sender, ModalSubmitEventArgs args)
         {
             if (args.Interaction.Data.CustomId == "whitelist_modal")
             {

@@ -18,6 +18,7 @@ namespace VaciniaBot
     {
         public static DiscordClient Client { get; set; }
         public static CommandsNextExtension Commands { get; set; }
+        public static bool IsBotReady = false;
         public static async Task Main()
         {
             var jsonReader = new JSONReader();
@@ -47,6 +48,7 @@ namespace VaciniaBot
             var slashCommandsConfig = Client.UseSlashCommands();
             slashCommandsConfig.RegisterCommands<BasicSlashCommands>();
             slashCommandsConfig.RegisterCommands<PlayerCommands>();
+            slashCommandsConfig.RegisterCommands<SayCommands>();
 
             Commands = Client.UseCommandsNext(commandsConfig);
             Commands.RegisterCommands<TestCommands>();
@@ -399,6 +401,7 @@ namespace VaciniaBot
         }
         private static Task ClientOnReady(DiscordClient sender, ReadyEventArgs args)
         {
+            Program.IsBotReady = true;
             Console.WriteLine($"Бот подключен как: {sender.CurrentUser.Username}");
             Console.WriteLine($"ID бота: {sender.CurrentUser.Id}");
             Console.WriteLine($"Количество серверов: {sender.Guilds.Count}");

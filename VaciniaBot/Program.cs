@@ -156,6 +156,16 @@ namespace VaciniaBot
 
             var member = await guild.GetMemberAsync(args.Interaction.User.Id);
 
+            bool isAdmin = member.Permissions.HasPermission(Permissions.Administrator) ||
+                   jsonReader.AdminRoles.Any(roleId => member.Roles.Any(role => role.Id == roleId));
+
+            if (!isAdmin)
+            {
+                await args.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
+                    new DiscordInteractionResponseBuilder().WithContent("У вас нет прав для выполнения этого действия.").AsEphemeral(true));
+                return;
+            }
+
             switch (args.Interaction.Data.CustomId)
             {
                 case "accept_button":
@@ -256,23 +266,7 @@ namespace VaciniaBot
                         await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
                             .WithContent("Произошла ошибка при обработке заявки."));
                     }
-                    break;
-
-                case "invite_button":
-                    try
-                    {
-                        var channel = args.Interaction.Channel;
-
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                            .WithContent("Игрок приглашен в чат!"));
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Ошибка при обработке кнопки 'Пригласить': {ex.Message}");
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                            .WithContent("Произошла ошибка при обработке приглашения."));
-                    }
-                    break;
+                    break;  
             }
         }
         private static async Task CreateTicket(DiscordClient sender, ModalSubmitEventArgs args)
@@ -337,11 +331,10 @@ namespace VaciniaBot
 
                 var acceptButton = new DiscordButtonComponent(ButtonStyle.Success, "accept_button", "Принять");
                 var rejectButton = new DiscordButtonComponent(ButtonStyle.Danger, "reject_button", "Отклонить");
-                var inviteButton = new DiscordButtonComponent(ButtonStyle.Primary, "invite_button", "Пригласить игрока в чат");
 
                 var messageBuilder = new DiscordMessageBuilder()
                     .AddEmbed(embed)
-                    .AddComponents(acceptButton, rejectButton, inviteButton);
+                    .AddComponents(acceptButton, rejectButton);
 
                 await channel.SendMessageAsync(messageBuilder);
 

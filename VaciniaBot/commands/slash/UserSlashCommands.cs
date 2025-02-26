@@ -20,12 +20,15 @@ namespace VaciniaBot.commands.slash
             var member = await ctx.Guild.GetMemberAsync(ctx.User.Id);
             if (!member.Permissions.HasPermission(Permissions.Administrator))
             {
-                await ctx.CreateResponseAsync("У вас нет прав на использование этой команды.", ephemeral: true);
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("У вас нет прав на использование этой команды."));
                 return;
             }
 
-            Console.WriteLine($"Пользователь {ctx.User.Username} выполнил команду /say");
             await ctx.Channel.SendMessageAsync(text);
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Сообщение отправлено!"));
+
+            Console.WriteLine($"Пользователь {ctx.User.Username} выполнил команду /say");
         }
         [SlashCommand("clear", "Удалить указанное количество сообщений в канале")]
         public async Task ClearCommand(InteractionContext ctx, [Option("количество", "Количество сообщений для удаления")] long amount)

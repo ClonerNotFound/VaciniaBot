@@ -13,6 +13,7 @@ using System;
 using System.Threading;
 using System.IO;
 using System.Text;
+using System.Xml.Linq;
 
 namespace VaciniaBot
 {
@@ -72,6 +73,8 @@ namespace VaciniaBot
             }
             if (args.Interaction.Data.CustomId == "delete_channel_button")
             {
+                await TranscriptTicket(sender, args, jsonReader);
+
                 await DeleteButtonDropdown(sender, args);
             }
         }
@@ -79,8 +82,7 @@ namespace VaciniaBot
         {
             await args.Interaction.DeferAsync();
 
-            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                .WithContent("Канал будет удален через 10 секунд."));
+            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Канал будет удален через 10 секунд."));
 
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
@@ -122,25 +124,13 @@ namespace VaciniaBot
             switch (selectedValue)
             {
                 case "WhitelistRequest":
-                    var modal = new DiscordInteractionResponseBuilder()
-                        .WithTitle("Заявка в WhiteList")
-                        .WithCustomId("whitelist_modal")
-                        .AddComponents(new TextInputComponent(label: "Ваш никнейм", customId: "nickname", placeholder: "Введите ваш никнейм", required: true))
-                        .AddComponents(new TextInputComponent(label: "Ваше имя", customId: "name", placeholder: "Введите ваше имя", required: true))
-                        .AddComponents(new TextInputComponent(label: "Ваш возраст", customId: "age", placeholder: "Введите ваш возраст", required: true))
-                        .AddComponents(new TextInputComponent(label: "Причина заявки", customId: "reason", placeholder: "Почему вы хотите попасть в WhiteList?", required: true))
-                        .AddComponents(new TextInputComponent(label: "Дополнительная информация", customId: "additional_info", placeholder: "Дополнительные сведения", required: false));
+                    var modal = new DiscordInteractionResponseBuilder().WithTitle("Заявка в WhiteList").WithCustomId("whitelist_modal").AddComponents(new TextInputComponent(label: "Ваш никнейм", customId: "nickname", placeholder: "Введите ваш никнейм", required: true)).AddComponents(new TextInputComponent(label: "Ваше имя", customId: "name", placeholder: "Введите ваше имя", required: true)).AddComponents(new TextInputComponent(label: "Ваш возраст", customId: "age", placeholder: "Введите ваш возраст", required: true)).AddComponents(new TextInputComponent(label: "Причина заявки", customId: "reason", placeholder: "Почему вы хотите попасть в WhiteList?", required: true)).AddComponents(new TextInputComponent(label: "Дополнительная информация", customId: "additional_info", placeholder: "Дополнительные сведения", required: false));
 
                     await args.Interaction.CreateResponseAsync(InteractionResponseType.Modal, modal);
                     break;
 
                 case "ReportViolation":
-                    var modalReport = new DiscordInteractionResponseBuilder()
-                        .WithTitle("Сообщить о нарушении")
-                        .WithCustomId("report_modal")
-                        .AddComponents(new TextInputComponent(label: "Никнейм нарушителя", customId: "violator_nickname", placeholder: "Введите никнейм нарушителя", required: true))
-                        .AddComponents(new TextInputComponent(label: "Описание нарушения", customId: "violation_description", placeholder: "Опишите нарушение", required: true))
-                        .AddComponents(new TextInputComponent(label: "Дополнительная информация", customId: "additional_info", placeholder: "Дополнительные сведения", required: false));
+                    var modalReport = new DiscordInteractionResponseBuilder().WithTitle("Сообщить о нарушении").WithCustomId("report_modal").AddComponents(new TextInputComponent(label: "Никнейм нарушителя", customId: "violator_nickname", placeholder: "Введите никнейм нарушителя", required: true)).AddComponents(new TextInputComponent(label: "Описание нарушения", customId: "violation_description", placeholder: "Опишите нарушение", required: true)).AddComponents(new TextInputComponent(label: "Дополнительная информация", customId: "additional_info", placeholder: "Дополнительные сведения", required: false));
 
                     await args.Interaction.CreateResponseAsync(InteractionResponseType.Modal, modalReport);
                     break;
@@ -331,6 +321,28 @@ namespace VaciniaBot
             var messages = await args.Interaction.Channel.GetMessagesAsync();
             var logContent = new StringBuilder();
 
+            var embed = args.Message.Embeds.FirstOrDefault();
+            var ticketOwnerId = embed?.Fields.FirstOrDefault(f => f.Name == "UserID")?.Value;
+            var ticketOwner = ticketOwnerId != null ? await sender.GetUserAsync(ulong.Parse(ticketOwnerId)) : null;
+            var ticketName = args.Interaction.Channel.Name;
+
+            var ticketSection = ticketName.ToLower().Contains("whitelist") ? "Заявка" :
+                                ticketName.ToLower().Contains("report") ? "Жалоба" :
+                                "Неизвестно";
+
+            var usersInConversation = messages.Select(m => m.Author).Distinct().Select(u => $"<@{u.Id}>").ToList();
+
+            var ticketInfoEmbed = new DiscordEmbedBuilder()
+            {
+                Title = "Информация о тикете",
+                Color = DiscordColor.Blue,
+                Timestamp = DateTime.UtcNow
+            };
+
+            ticketInfoEmbed.AddField("Создатель тикета", ticketOwner != null ? $"<@{ticketOwner.Id}>" : "Неизвестно", inline: true);
+            ticketInfoEmbed.AddField("Имя тикета", ticketName, inline: true);
+            ticketInfoEmbed.AddField("Раздел тикета", ticketSection, inline: true);
+            ticketInfoEmbed.AddField("Пользователи в переписке", string.Join(", ", usersInConversation), inline: false);
             logContent.AppendLine("<!DOCTYPE html>");
             logContent.AppendLine("<html lang=\"ru\">");
             logContent.AppendLine("<head>");
@@ -338,9 +350,14 @@ namespace VaciniaBot
             logContent.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
             logContent.AppendLine("    <title>Лог Тикета</title>");
             logContent.AppendLine("    <style>");
-            logContent.AppendLine("        body { font-family: Arial, sans-serif; }");
-            logContent.AppendLine("        .message { margin-bottom: 20px; border-left: 4px solid #ccc; padding-left: 10px; }");
-            logContent.AppendLine("        .embed { background-color: #2f3136; padding: 10px; border-radius: 5px; margin-top: 10px; }");
+            logContent.AppendLine("        body { font-family: Arial, sans-serif; margin: 50px 0 0 30%; background: #2b2d31; }");
+            logContent.AppendLine("        .message { padding-left: 10px; display: flex; }");
+            logContent.AppendLine("        p { color: white; }");
+            logContent.AppendLine("        .message p { color: white; }");
+            logContent.AppendLine("        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }");
+            logContent.AppendLine("        .name { color: white; }");
+            logContent.AppendLine("        .date { color: #72767d; }");
+            logContent.AppendLine("        .embed { background-color: #2f3136; padding: 10px; border-radius: 5px; margin-top: 10px; margin-bottom: 15px; margin-right: 300px; }");
             logContent.AppendLine("        .embed-title { font-weight: bold; color: #fff; }");
             logContent.AppendLine("        .embed-description { color: #dcddde; }");
             logContent.AppendLine("        .embed-field { margin-top: 5px; }");
@@ -354,16 +371,24 @@ namespace VaciniaBot
 
             foreach (var msg in reversedMessages)
             {
+                var avatarUrl = msg.Author.GetAvatarUrl(ImageFormat.Png);
+
                 logContent.AppendLine("<div class=\"message\">");
-                logContent.AppendLine($"    <strong>{msg.Author.Username}</strong> <span style=\"color: #72767d;\">{msg.Timestamp}</span>");
-                logContent.AppendLine($"    <p>{msg.Content}</p>");
+                logContent.AppendLine("    <div class=\"message-footer\">");
+                logContent.AppendLine($"        <img class=\"avatar\" src=\"{avatarUrl}\" alt=\"Аватар\">");
+                logContent.AppendLine($"        <span class=\"name\">{msg.Author.Username}</span> <span class=\"date\">{msg.Timestamp}</span>");
+                logContent.AppendLine("         <div class=\"message-content\">");
+                logContent.AppendLine($"            <p>{msg.Content}</p>");
+                logContent.AppendLine($"        </div>");
+                logContent.AppendLine($"    </div>");
+                logContent.AppendLine($"</div>");
 
                 if (msg.Embeds.Any())
                 {
                     foreach (var embedMsg in msg.Embeds)
                     {
                         var embedColor = embedMsg.Color.HasValue ? embedMsg.Color.Value.ToString() : "ccc";
-                        logContent.AppendLine("    <div class=\"embed\" style=\"border-left-color: #" + embedColor + ";\">");
+                        logContent.AppendLine("    <div class=\"embed\" style=\"border-left-color: " + embedColor + ";\">");
 
                         if (!string.IsNullOrEmpty(embedMsg.Title))
                         {
@@ -398,6 +423,10 @@ namespace VaciniaBot
 
             if (logChannel != null)
             {
+                var embedMessage = new DiscordMessageBuilder().WithEmbed(ticketInfoEmbed);
+
+                await logChannel.SendMessageAsync(embedMessage);
+
                 using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
                 {
                     var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
@@ -463,7 +492,7 @@ namespace VaciniaBot
                     category = await guild.CreateChannelCategoryAsync("Заявки");
                 }
 
-                var channelName = $"whitelist-заявка-{nickname.Replace(" ", "-")}";
+                var channelName = $"whitelist-{nickname.Replace(" ", "-")}";
                 var channel = await guild.CreateTextChannelAsync(channelName, parent: category, overwrites: overwrites);
 
                 var acceptButton = new DiscordButtonComponent(ButtonStyle.Success, "accept_button", "Принять");
@@ -487,11 +516,9 @@ namespace VaciniaBot
 
                 var overwrites = new List<DiscordOverwriteBuilder>
         {
-            new DiscordOverwriteBuilder(guild.EveryoneRole)
-                .Deny(Permissions.AccessChannels),
+            new DiscordOverwriteBuilder(guild.EveryoneRole).Deny(Permissions.AccessChannels),
 
-            new DiscordOverwriteBuilder(member)
-                .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
+            new DiscordOverwriteBuilder(member).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
         };
 
                 foreach (var roleId in adminRoles)
@@ -499,24 +526,21 @@ namespace VaciniaBot
                     var role = guild.GetRole(roleId);
                     if (role != null)
                     {
-                        overwrites.Add(new DiscordOverwriteBuilder(role)
-                            .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
+                        overwrites.Add(new DiscordOverwriteBuilder(role).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
                     }
                 }
 
                 await jsonReader.ReadJson();
 
                 var everyoneRole = guild.EveryoneRole;
-                overwrites.Add(new DiscordOverwriteBuilder(everyoneRole)
-                    .Deny(Permissions.AccessChannels));
+                overwrites.Add(new DiscordOverwriteBuilder(everyoneRole).Deny(Permissions.AccessChannels));
 
                 foreach (var roleId in adminRoles)
                 {
                     var role = guild.GetRole(roleId);
                     if (role != null)
                     {
-                        overwrites.Add(new DiscordOverwriteBuilder(role)
-                            .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
+                        overwrites.Add(new DiscordOverwriteBuilder(role).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
                     }
                 }
 
@@ -526,7 +550,7 @@ namespace VaciniaBot
                     category = await guild.CreateChannelCategoryAsync("Жалобы");
                 }
 
-                var channelName = $"жалоба-{violatorNickname.ToLower().Replace(" ", "-")}";
+                var channelName = $"report-{violatorNickname.ToLower().Replace(" ", "-")}";
                 var channel = await guild.CreateTextChannelAsync(channelName, parent: category, overwrites: overwrites);
 
                 var reportEmbed = new DiscordEmbedBuilder()
@@ -536,6 +560,8 @@ namespace VaciniaBot
                 };
                 reportEmbed.AddField("Никнейм нарушителя", violatorNickname, inline: true);
                 reportEmbed.AddField("Описание нарушения", violationDescription, inline: false);
+                reportEmbed.AddField("UserID", args.Interaction.User.Id.ToString(), inline: false);
+
                 if (!string.IsNullOrEmpty(additionalInfo))
                 {
                     reportEmbed.AddField("Дополнительная информация", additionalInfo, inline: false);
@@ -543,15 +569,12 @@ namespace VaciniaBot
 
                 var deleteButton = new DiscordButtonComponent(ButtonStyle.Danger, "delete_channel_button", "Удалить");
 
-                var messageBuilder = new DiscordMessageBuilder()
-                    .AddEmbed(reportEmbed)
-                    .AddComponents(deleteButton);
+                var messageBuilder = new DiscordMessageBuilder().AddEmbed(reportEmbed).AddComponents(deleteButton);
 
                 await channel.SendMessageAsync(messageBuilder);
 
                 await args.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-                    new DiscordInteractionResponseBuilder()
-                        .WithContent($"Ваша жалоба успешно отправлена! Канал для жалобы: {channel.Mention}").AsEphemeral(true));
+                    new DiscordInteractionResponseBuilder().WithContent($"Ваша жалоба успешно отправлена! Канал для жалобы: {channel.Mention}").AsEphemeral(true));
             }
         }
         private static Task ClientOnReady(DiscordClient sender, ReadyEventArgs args)

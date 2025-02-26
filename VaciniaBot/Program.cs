@@ -11,6 +11,8 @@ using DSharpPlus.EventArgs;
 using DSharpPlus.SlashCommands;
 using System;
 using System.Threading;
+using System.IO;
+using System.Text;
 
 namespace VaciniaBot
 {
@@ -157,12 +159,12 @@ namespace VaciniaBot
             var member = await guild.GetMemberAsync(args.Interaction.User.Id);
 
             bool isAdmin = member.Permissions.HasPermission(Permissions.Administrator) ||
-                   jsonReader.AdminRoles.Any(roleId => member.Roles.Any(role => role.Id == roleId));
+                           jsonReader.AdminRoles.Any(roleId => member.Roles.Any(role => role.Id == roleId));
 
             if (!isAdmin)
             {
-                await args.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-                    new DiscordInteractionResponseBuilder().WithContent("У вас нет прав для выполнения этого действия.").AsEphemeral(true));
+                await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
+                    .WithContent("У вас нет прав для выполнения этого действия."));
                 return;
             }
 
@@ -171,10 +173,20 @@ namespace VaciniaBot
                 case "accept_button":
                     try
                     {
-                        await member.SendMessageAsync("Ваша заявка на Whitelist была принята!");
+                        var userIdField = embed.Fields.FirstOrDefault(f => f.Name == "UserID");
+                        if (userIdField == null)
+                        {
+                            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
+                                .WithContent("Ошибка: не удалось найти информацию о пользователе."));
+                            return;
+                        }
 
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                            .WithContent("Заявка принята! Пользователь уведомлен."));
+                        var userId = ulong.Parse(userIdField.Value);
+
+                        var applicant = await guild.GetMemberAsync(userId);
+                        await applicant.SendMessageAsync("Ваша заявка на Whitelist была принята!");
+
+                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Заявка принята! Пользователь уведомлен."));
 
                         var logChannel = await sender.GetChannelAsync(jsonReader.LogChannelId);
                         if (logChannel != null)
@@ -193,6 +205,32 @@ namespace VaciniaBot
                         {
                             Console.WriteLine("Канал для консоли не найден.");
                         }
+
+                        var messages = await args.Interaction.Channel.GetMessagesAsync();
+                        var logContent = new StringBuilder();
+
+                        foreach (var msg in messages)
+                        {
+                            logContent.AppendLine($"[{msg.Timestamp}] {msg.Author.Username}: {msg.Content}");
+                        }
+
+                        var logFileName = $"log_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+                        using (var writer = new StreamWriter(logFileName))
+                        {
+                            await writer.WriteAsync(logContent.ToString());
+                        }
+
+                        if (logChannel != null)
+                        {
+                            using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
+                            {
+                                var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
+
+                                await logChannel.SendMessageAsync(msgBuilder);
+                            }
+                        }
+
+                        File.Delete(logFileName);
 
                         var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
                         var deleteMessage = new DiscordMessageBuilder()
@@ -248,17 +286,96 @@ namespace VaciniaBot
                 case "reject_button":
                     try
                     {
-                        try
+                        var userIdField = embed.Fields.FirstOrDefault(f => f.Name == "UserID");
+                        if (userIdField == null)
                         {
-                            await member.SendMessageAsync("Ваша заявка на Whitelist была отклонена.");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Не удалось отправить личное сообщение пользователю: {ex.Message}");
+                            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
+                                .WithContent("Ошибка: не удалось найти информацию о пользователе."));
+                            return;
                         }
 
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                            .WithContent("Заявка отклонена! Пользователь уведомлен."));
+                        var userId = ulong.Parse(userIdField.Value);
+
+                        var applicant = await guild.GetMemberAsync(userId);
+                        await applicant.SendMessageAsync("Ваша заявка на Whitelist была отклонена. Попробуйте позже");
+
+                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Заявка отклонена. Пользователь уведомлен."));
+
+                        var logChannel = await sender.GetChannelAsync(jsonReader.LogChannelId);
+                        if (logChannel != null)
+                        {
+                            string message = $"Заявка от пользователя {nickname} была принята.";
+                            await logChannel.SendMessageAsync(message);
+                        }
+
+                        var messages = await args.Interaction.Channel.GetMessagesAsync();
+                        var logContent = new StringBuilder();
+
+                        foreach (var msg in messages)
+                        {
+                            logContent.AppendLine($"[{msg.Timestamp}] {msg.Author.Username}: {msg.Content}");
+                        }
+
+                        var logFileName = $"log_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+                        using (var writer = new StreamWriter(logFileName))
+                        {
+                            await writer.WriteAsync(logContent.ToString());
+                        }
+
+                        if (logChannel != null)
+                        {
+                            using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
+                            {
+                                var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
+
+                                await logChannel.SendMessageAsync(msgBuilder);
+                            }
+                        }
+
+                        File.Delete(logFileName);
+
+                        var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
+                        var deleteMessage = new DiscordMessageBuilder()
+                            .WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.")
+                            .AddComponents(cancelButton);
+
+                        var deleteConfirmationMessage = await args.Interaction.Channel.SendMessageAsync(deleteMessage);
+
+                        var cancellationTokenSource = new CancellationTokenSource();
+                        var cancellationToken = cancellationTokenSource.Token;
+
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(10000, cancellationToken);
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                await args.Interaction.Channel.DeleteAsync();
+                            }
+                        });
+
+                        sender.ComponentInteractionCreated += async (s, e) =>
+                        {
+                            if (e.Interaction.Data.CustomId == "cancel_delete_button" && e.Message.Id == deleteConfirmationMessage.Id)
+                            {
+                                cancellationTokenSource.Cancel();
+
+                                var deleteTicketButton = new DiscordButtonComponent(ButtonStyle.Danger, "manual_delete_button", "Удалить тикет");
+
+                                await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
+                                    new DiscordInteractionResponseBuilder()
+                                        .WithContent("Удаление канала отменено.")
+                                        .AddComponents(deleteTicketButton));
+
+                                await deleteConfirmationMessage.DeleteAsync();
+                            }
+
+                            if (e.Interaction.Data.CustomId == "manual_delete_button")
+                            {
+                                await e.Interaction.Channel.DeleteAsync();
+                                await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
+                                    new DiscordInteractionResponseBuilder().WithContent("Канал удален вручную.").AsEphemeral(true));
+                            }
+                        };
                     }
                     catch (Exception ex)
                     {
@@ -266,7 +383,7 @@ namespace VaciniaBot
                         await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
                             .WithContent("Произошла ошибка при обработке заявки."));
                     }
-                    break;  
+                    break;
             }
         }
         private static async Task CreateTicket(DiscordClient sender, ModalSubmitEventArgs args)
@@ -292,6 +409,7 @@ namespace VaciniaBot
                 embed.AddField("Имя", name, inline: true);
                 embed.AddField("Возраст", age, inline: true);
                 embed.AddField("Причина заявки", reason, inline: false);
+                embed.AddField("UserID", args.Interaction.User.Id.ToString(), inline: false);
                 if (!string.IsNullOrEmpty(additionalInfo))
                 {
                     embed.AddField("Дополнительная информация", additionalInfo, inline: false);

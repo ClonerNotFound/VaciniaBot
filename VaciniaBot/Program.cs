@@ -163,8 +163,7 @@ namespace VaciniaBot
 
             if (!isAdmin)
             {
-                await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                    .WithContent("У вас нет прав для выполнения этого действия."));
+                await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("У вас нет прав для выполнения этого действия."));
                 return;
             }
 
@@ -176,12 +175,13 @@ namespace VaciniaBot
                         var userIdField = embed.Fields.FirstOrDefault(f => f.Name == "UserID");
                         if (userIdField == null)
                         {
-                            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                                .WithContent("Ошибка: не удалось найти информацию о пользователе."));
+                            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Ошибка: не удалось найти информацию о пользователе."));
                             return;
                         }
 
                         var userId = ulong.Parse(userIdField.Value);
+
+                        //Уведомление пользователя о принятии заявки
 
                         var applicant = await guild.GetMemberAsync(userId);
                         await applicant.SendMessageAsync("Ваша заявка на Whitelist была принята!");
@@ -206,36 +206,84 @@ namespace VaciniaBot
                             Console.WriteLine("Канал для консоли не найден.");
                         }
 
-                        var messages = await args.Interaction.Channel.GetMessagesAsync();
-                        var logContent = new StringBuilder();
+                        //var messages = await args.Interaction.Channel.GetMessagesAsync();
+                        //var logContent = new StringBuilder();
 
-                        foreach (var msg in messages)
-                        {
-                            logContent.AppendLine($"[{msg.Timestamp}] {msg.Author.Username}: {msg.Content}");
-                        }
+                        //logContent.AppendLine("<!DOCTYPE html>");
+                        //logContent.AppendLine("<html lang=\"ru\">");
+                        //logContent.AppendLine("<head>");
+                        //logContent.AppendLine("    <meta charset=\"UTF-8\">");
+                        //logContent.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+                        //logContent.AppendLine("    <title>Лог сообщений</title>");
+                        //logContent.AppendLine("    <style>");
+                        //logContent.AppendLine("        body { font-family: Arial, sans-serif; }");
+                        //logContent.AppendLine("        .message { margin-bottom: 20px; border-left: 4px solid #ccc; padding-left: 10px; }");
+                        //logContent.AppendLine("        .embed { background-color: #2f3136; padding: 10px; border-radius: 5px; margin-top: 10px; }");
+                        //logContent.AppendLine("        .embed-title { font-weight: bold; color: #fff; }");
+                        //logContent.AppendLine("        .embed-description { color: #dcddde; }");
+                        //logContent.AppendLine("        .embed-field { margin-top: 5px; }");
+                        //logContent.AppendLine("        .embed-field-name { font-weight: bold; color: #fff; }");
+                        //logContent.AppendLine("        .embed-field-value { color: #dcddde; }");
+                        //logContent.AppendLine("    </style>");
+                        //logContent.AppendLine("</head>");
+                        //logContent.AppendLine("<body>");
 
-                        var logFileName = $"log_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-                        using (var writer = new StreamWriter(logFileName))
-                        {
-                            await writer.WriteAsync(logContent.ToString());
-                        }
+                        //foreach (var msg in messages)
+                        //{
+                        //    logContent.AppendLine("<div class=\"message\">");
+                        //    logContent.AppendLine($"    <strong>{msg.Author.Username}</strong> <span style=\"color: #72767d;\">{msg.Timestamp}</span>");
+                        //    logContent.AppendLine($"    <p>{msg.Content}</p>");
 
-                        if (logChannel != null)
-                        {
-                            using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
-                            {
-                                var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
+                        //    if (msg.Embeds.Any())
+                        //    {
+                        //        foreach (var embedMsg in msg.Embeds)
+                        //        {
+                        //            logContent.AppendLine("    <div class=\"embed\" style=\"border-left-color: #" + embedMsg.Color?.ToString("X6") + ";\">");
+                        //            if (!string.IsNullOrEmpty(embedMsg.Title))
+                        //            {
+                        //                logContent.AppendLine($"        <div class=\"embed-title\">{embedMsg.Title}</div>");
+                        //            }
+                        //            if (!string.IsNullOrEmpty(embedMsg.Description))
+                        //            {
+                        //                logContent.AppendLine($"        <div class=\"embed-description\">{embedMsg.Description}</div>");
+                        //            }
+                        //            if (embedMsg.Fields.Any())
+                        //            {
+                        //                foreach (var field in embedMsg.Fields)
+                        //                {
+                        //                    logContent.AppendLine("        <div class=\"embed-field\">");
+                        //                    logContent.AppendLine($"            <div class=\"embed-field-name\">{field.Name}</div>");
+                        //                    logContent.AppendLine($"            <div class=\"embed-field-value\">{field.Value}</div>");
+                        //                    logContent.AppendLine("        </div>");
+                        //                }
+                        //            }
+                        //            logContent.AppendLine("    </div>");
+                        //        }
+                        //    }
 
-                                await logChannel.SendMessageAsync(msgBuilder);
-                            }
-                        }
+                        //    logContent.AppendLine("</div>");
+                        //}
 
-                        File.Delete(logFileName);
+                        //logContent.AppendLine("</body>");
+                        //logContent.AppendLine("</html>");
+
+                        //var logFileName = $"log_{DateTime.Now:yyyyMMdd_HHmmss}.html";
+                        //await File.WriteAllTextAsync(logFileName, logContent.ToString());
+
+                        //if (logChannel != null)
+                        //{
+                        //    using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
+                        //    {
+                        //        var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
+
+                        //        await logChannel.SendMessageAsync(msgBuilder);
+                        //    }
+                        //}
+
+                        //File.Delete(logFileName);
 
                         var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
-                        var deleteMessage = new DiscordMessageBuilder()
-                            .WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.")
-                            .AddComponents(cancelButton);
+                        var deleteMessage = new DiscordMessageBuilder().WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.").AddComponents(cancelButton);
 
                         var deleteConfirmationMessage = await args.Interaction.Channel.SendMessageAsync(deleteMessage);
 
@@ -260,9 +308,7 @@ namespace VaciniaBot
                                 var deleteTicketButton = new DiscordButtonComponent(ButtonStyle.Danger, "manual_delete_button", "Удалить тикет");
 
                                 await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-                                    new DiscordInteractionResponseBuilder()
-                                        .WithContent("Удаление канала отменено.")
-                                        .AddComponents(deleteTicketButton));
+                                    new DiscordInteractionResponseBuilder().WithContent("Удаление канала отменено.").AddComponents(deleteTicketButton));
 
                                 await deleteConfirmationMessage.DeleteAsync();
                             }
@@ -278,8 +324,7 @@ namespace VaciniaBot
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Ошибка при обработке кнопки 'Принять': {ex.Message}");
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                            .WithContent("Произошла ошибка при обработке заявки."));
+                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Произошла ошибка при обработке заявки."));
                     }
                     break;
 
@@ -289,8 +334,7 @@ namespace VaciniaBot
                         var userIdField = embed.Fields.FirstOrDefault(f => f.Name == "UserID");
                         if (userIdField == null)
                         {
-                            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                                .WithContent("Ошибка: не удалось найти информацию о пользователе."));
+                            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Ошибка: не удалось найти информацию о пользователе."));
                             return;
                         }
 
@@ -335,9 +379,7 @@ namespace VaciniaBot
                         File.Delete(logFileName);
 
                         var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
-                        var deleteMessage = new DiscordMessageBuilder()
-                            .WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.")
-                            .AddComponents(cancelButton);
+                        var deleteMessage = new DiscordMessageBuilder().WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.").AddComponents(cancelButton);
 
                         var deleteConfirmationMessage = await args.Interaction.Channel.SendMessageAsync(deleteMessage);
 
@@ -362,9 +404,7 @@ namespace VaciniaBot
                                 var deleteTicketButton = new DiscordButtonComponent(ButtonStyle.Danger, "manual_delete_button", "Удалить тикет");
 
                                 await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-                                    new DiscordInteractionResponseBuilder()
-                                        .WithContent("Удаление канала отменено.")
-                                        .AddComponents(deleteTicketButton));
+                                    new DiscordInteractionResponseBuilder().WithContent("Удаление канала отменено.").AddComponents(deleteTicketButton));
 
                                 await deleteConfirmationMessage.DeleteAsync();
                             }
@@ -380,8 +420,7 @@ namespace VaciniaBot
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Ошибка при обработке кнопки 'Отклонить': {ex.Message}");
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder()
-                            .WithContent("Произошла ошибка при обработке заявки."));
+                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Произошла ошибка при обработке заявки."));
                     }
                     break;
             }
@@ -433,8 +472,7 @@ namespace VaciniaBot
                     var role = guild.GetRole(roleId);
                     if (role != null)
                     {
-                        overwrites.Add(new DiscordOverwriteBuilder(role)
-                            .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
+                        overwrites.Add(new DiscordOverwriteBuilder(role).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
                     }
                 }
 
@@ -450,14 +488,11 @@ namespace VaciniaBot
                 var acceptButton = new DiscordButtonComponent(ButtonStyle.Success, "accept_button", "Принять");
                 var rejectButton = new DiscordButtonComponent(ButtonStyle.Danger, "reject_button", "Отклонить");
 
-                var messageBuilder = new DiscordMessageBuilder()
-                    .AddEmbed(embed)
-                    .AddComponents(acceptButton, rejectButton);
+                var messageBuilder = new DiscordMessageBuilder().AddEmbed(embed).AddComponents(acceptButton, rejectButton);
 
                 await channel.SendMessageAsync(messageBuilder);
 
-                await args.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder()
-                    .WithContent($"Ваша заявка успешно отправлена! Канал для вашей заявки: {channel.Mention}").AsEphemeral(true));
+                await args.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Ваша заявка успешно отправлена! Канал для вашей заявки: {channel.Mention}").AsEphemeral(true));
             }
             else if (args.Interaction.Data.CustomId == "report_modal")
             {

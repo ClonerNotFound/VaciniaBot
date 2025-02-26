@@ -6,6 +6,7 @@ using DSharpPlus.SlashCommands;
 using DSharpPlus;
 using MySql.Data.MySqlClient;
 using VaciniaBot.config;
+using static System.Net.WebRequestMethods;
 
 namespace VaciniaBot.commands.slash
 {
@@ -94,8 +95,9 @@ namespace VaciniaBot.commands.slash
                     {
                         Title = "Игроки Vacinia",
                         Description = playerList,
-                        Color = DiscordColor.Green
+                        Color = DiscordColor.Green,
                     };
+                    embed.WithThumbnail("https://i.imgur.com/BOSOs8H.png");
 
                     await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
                 }

@@ -204,85 +204,7 @@ namespace VaciniaBot
                             Console.WriteLine("Канал для консоли не найден.");
                         }
 
-                        var messages = await args.Interaction.Channel.GetMessagesAsync();
-                        var logContent = new StringBuilder();
-
-                        logContent.AppendLine("<!DOCTYPE html>");
-                        logContent.AppendLine("<html lang=\"ru\">");
-                        logContent.AppendLine("<head>");
-                        logContent.AppendLine("    <meta charset=\"UTF-8\">");
-                        logContent.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
-                        logContent.AppendLine("    <title>Лог Тикета</title>");
-                        logContent.AppendLine("    <style>");
-                        logContent.AppendLine("        body { font-family: Arial, sans-serif; }");
-                        logContent.AppendLine("        .message { margin-bottom: 20px; border-left: 4px solid #ccc; padding-left: 10px; }");
-                        logContent.AppendLine("        .embed { background-color: #2f3136; padding: 10px; border-radius: 5px; margin-top: 10px; }");
-                        logContent.AppendLine("        .embed-title { font-weight: bold; color: #fff; }");
-                        logContent.AppendLine("        .embed-description { color: #dcddde; }");
-                        logContent.AppendLine("        .embed-field { margin-top: 5px; }");
-                        logContent.AppendLine("        .embed-field-name { font-weight: bold; color: #fff; }");
-                        logContent.AppendLine("        .embed-field-value { color: #dcddde; }");
-                        logContent.AppendLine("    </style>");
-                        logContent.AppendLine("</head>");
-                        logContent.AppendLine("<body>");
-
-                        var reversedMessages = messages.Reverse();
-
-                        foreach (var msg in reversedMessages)
-                        {
-                            logContent.AppendLine("<div class=\"message\">");
-                            logContent.AppendLine($"    <strong>{msg.Author.Username}</strong> <span style=\"color: #72767d;\">{msg.Timestamp}</span>");
-                            logContent.AppendLine($"    <p>{msg.Content}</p>");
-
-                            if (msg.Embeds.Any())
-                            {
-                                foreach (var embedMsg in msg.Embeds)
-                                {
-                                    var embedColor = embedMsg.Color.HasValue ? embedMsg.Color.Value.ToString() : "ccc";
-                                    logContent.AppendLine("    <div class=\"embed\" style=\"border-left-color: #" + embedColor + ";\">");
-
-                                    if (!string.IsNullOrEmpty(embedMsg.Title))
-                                    {
-                                        logContent.AppendLine($"        <div class=\"embed-title\">{embedMsg.Title}</div>");
-                                    }
-                                    if (!string.IsNullOrEmpty(embedMsg.Description))
-                                    {
-                                        logContent.AppendLine($"        <div class=\"embed-description\">{embedMsg.Description}</div>");
-                                    }
-                                    if (embedMsg.Fields.Any())
-                                    {
-                                        foreach (var field in embedMsg.Fields)
-                                        {
-                                            logContent.AppendLine("        <div class=\"embed-field\">");
-                                            logContent.AppendLine($"            <div class=\"embed-field-name\">{field.Name}</div>");
-                                            logContent.AppendLine($"            <div class=\"embed-field-value\">{field.Value}</div>");
-                                            logContent.AppendLine("        </div>");
-                                        }
-                                    }
-                                    logContent.AppendLine("    </div>");
-                                }
-                            }
-
-                            logContent.AppendLine("</div>");
-                        }
-
-                        logContent.AppendLine("</body>");
-                        logContent.AppendLine("</html>");
-
-                        var logFileName = $"log_{DateTime.Now:yyyyMMdd_HHmmss}.html";
-                        File.WriteAllText(logFileName, logContent.ToString());
-
-                        if (logChannel != null)
-                        {
-                            using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
-                            {
-                                var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
-
-                                await logChannel.SendMessageAsync(msgBuilder);
-                            }
-                        }
-
-                        File.Delete(logFileName);
+                        await TranscriptTicket(sender, args, jsonReader);
 
                         var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
                         var deleteMessage = new DiscordMessageBuilder().WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.").AddComponents(cancelButton);
@@ -354,31 +276,7 @@ namespace VaciniaBot
                             await logChannel.SendMessageAsync(message);
                         }
 
-                        var messages = await args.Interaction.Channel.GetMessagesAsync();
-                        var logContent = new StringBuilder();
-
-                        foreach (var msg in messages)
-                        {
-                            logContent.AppendLine($"[{msg.Timestamp}] {msg.Author.Username}: {msg.Content}");
-                        }
-
-                        var logFileName = $"log_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-                        using (var writer = new StreamWriter(logFileName))
-                        {
-                            await writer.WriteAsync(logContent.ToString());
-                        }
-
-                        if (logChannel != null)
-                        {
-                            using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
-                            {
-                                var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
-
-                                await logChannel.SendMessageAsync(msgBuilder);
-                            }
-                        }
-
-                        File.Delete(logFileName);
+                        await TranscriptTicket(sender, args, jsonReader);
 
                         var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
                         var deleteMessage = new DiscordMessageBuilder().WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.").AddComponents(cancelButton);
@@ -427,6 +325,89 @@ namespace VaciniaBot
                     break;
             }
         }
+        private static async Task TranscriptTicket(DiscordClient sender, ComponentInteractionCreateEventArgs args, JSONReader jsonReader)
+        {
+            var logChannel = await sender.GetChannelAsync(jsonReader.LogChannelId);
+            var messages = await args.Interaction.Channel.GetMessagesAsync();
+            var logContent = new StringBuilder();
+
+            logContent.AppendLine("<!DOCTYPE html>");
+            logContent.AppendLine("<html lang=\"ru\">");
+            logContent.AppendLine("<head>");
+            logContent.AppendLine("    <meta charset=\"UTF-8\">");
+            logContent.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+            logContent.AppendLine("    <title>Лог Тикета</title>");
+            logContent.AppendLine("    <style>");
+            logContent.AppendLine("        body { font-family: Arial, sans-serif; }");
+            logContent.AppendLine("        .message { margin-bottom: 20px; border-left: 4px solid #ccc; padding-left: 10px; }");
+            logContent.AppendLine("        .embed { background-color: #2f3136; padding: 10px; border-radius: 5px; margin-top: 10px; }");
+            logContent.AppendLine("        .embed-title { font-weight: bold; color: #fff; }");
+            logContent.AppendLine("        .embed-description { color: #dcddde; }");
+            logContent.AppendLine("        .embed-field { margin-top: 5px; }");
+            logContent.AppendLine("        .embed-field-name { font-weight: bold; color: #fff; }");
+            logContent.AppendLine("        .embed-field-value { color: #dcddde; }");
+            logContent.AppendLine("    </style>");
+            logContent.AppendLine("</head>");
+            logContent.AppendLine("<body>");
+
+            var reversedMessages = messages.Reverse();
+
+            foreach (var msg in reversedMessages)
+            {
+                logContent.AppendLine("<div class=\"message\">");
+                logContent.AppendLine($"    <strong>{msg.Author.Username}</strong> <span style=\"color: #72767d;\">{msg.Timestamp}</span>");
+                logContent.AppendLine($"    <p>{msg.Content}</p>");
+
+                if (msg.Embeds.Any())
+                {
+                    foreach (var embedMsg in msg.Embeds)
+                    {
+                        var embedColor = embedMsg.Color.HasValue ? embedMsg.Color.Value.ToString() : "ccc";
+                        logContent.AppendLine("    <div class=\"embed\" style=\"border-left-color: #" + embedColor + ";\">");
+
+                        if (!string.IsNullOrEmpty(embedMsg.Title))
+                        {
+                            logContent.AppendLine($"        <div class=\"embed-title\">{embedMsg.Title}</div>");
+                        }
+                        if (!string.IsNullOrEmpty(embedMsg.Description))
+                        {
+                            logContent.AppendLine($"        <div class=\"embed-description\">{embedMsg.Description}</div>");
+                        }
+                        if (embedMsg.Fields.Any())
+                        {
+                            foreach (var field in embedMsg.Fields)
+                            {
+                                logContent.AppendLine("        <div class=\"embed-field\">");
+                                logContent.AppendLine($"            <div class=\"embed-field-name\">{field.Name}</div>");
+                                logContent.AppendLine($"            <div class=\"embed-field-value\">{field.Value}</div>");
+                                logContent.AppendLine("        </div>");
+                            }
+                        }
+                        logContent.AppendLine("    </div>");
+                    }
+                }
+
+                logContent.AppendLine("</div>");
+            }
+
+            logContent.AppendLine("</body>");
+            logContent.AppendLine("</html>");
+
+            var logFileName = $"log_{DateTime.Now:yyyyMMdd_HHmmss}.html";
+            File.WriteAllText(logFileName, logContent.ToString());
+
+            if (logChannel != null)
+            {
+                using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
+                {
+                    var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
+
+                    await logChannel.SendMessageAsync(msgBuilder);
+                }
+            }
+
+            File.Delete(logFileName);
+        }
         private static async Task CreateTicket(DiscordClient sender, ModalSubmitEventArgs args)
         {
             var jsonReader = new JSONReader();
@@ -462,11 +443,9 @@ namespace VaciniaBot
 
                 var overwrites = new List<DiscordOverwriteBuilder>
         {
-            new DiscordOverwriteBuilder(guild.EveryoneRole)
-                .Deny(Permissions.AccessChannels),
+            new DiscordOverwriteBuilder(guild.EveryoneRole).Deny(Permissions.AccessChannels),
 
-            new DiscordOverwriteBuilder(member)
-                .Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
+            new DiscordOverwriteBuilder(member).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
         };
 
                 foreach (var roleId in adminRoles)

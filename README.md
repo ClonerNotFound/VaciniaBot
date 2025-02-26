@@ -51,4 +51,4 @@
 
 ## Support
 
-Для поддержки используйте email clonernotfound@gmail.com или [Issues](https://github.com/ClonerNotFound/VaciniaBot/issues).
+Для поддержки используйте clonernotfound@gmail.com или [Issues](https://github.com/ClonerNotFound/VaciniaBot/issues).

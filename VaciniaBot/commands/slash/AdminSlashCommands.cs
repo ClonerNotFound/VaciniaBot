@@ -28,7 +28,7 @@ namespace VaciniaBot.commands.slash
                 Color = DiscordColor.Azure
             };
 
-            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embedMessage).AddComponents(dropdown).AsEphemeral(true));
+            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embedMessage).AddComponents(dropdown));
         }
     }
 }

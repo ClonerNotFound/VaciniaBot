@@ -486,10 +486,10 @@ namespace VaciniaBot
                     }
                 }
 
-                var category = guild.Channels.Values.FirstOrDefault(c => c.Name == "Заявки" && c.Type == ChannelType.Category);
+                var category = guild.Channels.Values.FirstOrDefault(c => c.Name == "Тикеты" && c.Type == ChannelType.Category);
                 if (category == null)
                 {
-                    category = await guild.CreateChannelCategoryAsync("Заявки");
+                    category = await guild.CreateChannelCategoryAsync("Тикеты");
                 }
 
                 var channelName = $"whitelist-{nickname.Replace(" ", "-")}";
@@ -544,10 +544,10 @@ namespace VaciniaBot
                     }
                 }
 
-                var category = guild.Channels.Values.FirstOrDefault(c => c.Name == "Жалобы" && c.Type == ChannelType.Category);
+                var category = guild.Channels.Values.FirstOrDefault(c => c.Name == "Тикеты" && c.Type == ChannelType.Category);
                 if (category == null)
                 {
-                    category = await guild.CreateChannelCategoryAsync("Жалобы");
+                    category = await guild.CreateChannelCategoryAsync("Тикеты");
                 }
 
                 var channelName = $"report-{violatorNickname.ToLower().Replace(" ", "-")}";

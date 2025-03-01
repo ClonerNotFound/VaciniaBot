@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using DSharpPlus;
 using DSharpPlus.SlashCommands;
 using DSharpPlus.Entities;
+using VaciniaBot.config;
 using MySql.Data.MySqlClient;
 
 namespace VaciniaBot.commands.slash
@@ -29,6 +30,49 @@ namespace VaciniaBot.commands.slash
             };
 
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embedMessage).AddComponents(dropdown));
+        }
+        [SlashCommand("removepassword", "Удалить пароль у игрока")]
+        public async Task RemovePasswordCommand(InteractionContext ctx, [Option("Никнейм", "Никнейм игрока")] string nickname)
+        {
+            await ctx.DeferAsync(ephemeral: true);
+
+            var member = await ctx.Guild.GetMemberAsync(ctx.User.Id);
+            if (!member.Permissions.HasPermission(Permissions.Administrator))
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("У вас нет прав на использование этой команды."));
+                return;
+            }
+
+            var jsonReader = new JSONReader();
+            await jsonReader.ReadJson();
+
+            var connectionString = $"Server={jsonReader.MySQL.Server};Port={jsonReader.MySQL.Port};Database={jsonReader.MySQL.Database};User ID={jsonReader.MySQL.User};Password={jsonReader.MySQL.Password};";
+
+            try
+            {
+                using (var connection = new MySqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    var command = new MySqlCommand($"UPDATE {jsonReader.MySQL.Table} SET password = NULL WHERE last_name = @nickname", connection);
+                    command.Parameters.AddWithValue("@nickname", nickname);
+
+                    int rowsAffected = await command.ExecuteNonQueryAsync();
+
+                    if (rowsAffected > 0)
+                    {
+                        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Пароль для игрока {nickname} успешно удален."));
+                    }
+                    else
+                    {
+                        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Игрок с ником {nickname} не найден."));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Произошла ошибка при удалении пароля: {ex.Message}"));
+                Console.WriteLine($"Ошибка при удалении пароля: {ex.Message}");
+            }
         }
     }
 }

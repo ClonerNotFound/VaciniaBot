@@ -186,7 +186,7 @@ namespace VaciniaBot
                         var consoleChannel = await sender.GetChannelAsync(jsonReader.ConsoleChannelId);
                         if (consoleChannel != null)
                         {
-                            string message = $"/whitelist add {nickname}";
+                            string message = $"whitelist add {nickname}";
                             await consoleChannel.SendMessageAsync(message);
                         }
                         else

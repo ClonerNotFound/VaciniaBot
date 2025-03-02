@@ -14,6 +14,7 @@ using System.Threading;
 using System.IO;
 using System.Text;
 using System.Xml.Linq;
+using MySql.Data.MySqlClient;
 
 namespace VaciniaBot
 {
@@ -192,6 +193,24 @@ namespace VaciniaBot
                         else
                         {
                             Console.WriteLine("Канал для консоли не найден.");
+                        }
+
+                        var connectionString = $"Server={jsonReader.MySQL.Server};Port={jsonReader.MySQL.Port};Database={jsonReader.MySQL.Database};User ID={jsonReader.MySQL.User};Password={jsonReader.MySQL.Password};";
+                        using (var connection = new MySqlConnection(connectionString))
+                        {
+                            await connection.OpenAsync();
+                            var command = new MySqlCommand($"INSERT INTO {jsonReader.MySQL.Table} (last_name) VALUES (@last_name)", connection);
+                            command.Parameters.AddWithValue("@last_name", nickname);
+
+                            int rowsAffected = await command.ExecuteNonQueryAsync();
+                            if (rowsAffected > 0)
+                            {
+                                Console.WriteLine($"Игрок {nickname} успешно добавлен в базу данных.");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Ошибка при добавлении игрока в базу данных.");
+                            }
                         }
 
                         await TranscriptTicket(sender, args, jsonReader);

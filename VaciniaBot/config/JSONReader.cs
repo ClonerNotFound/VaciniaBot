@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace VaciniaBot.config
 {
@@ -12,12 +13,13 @@ namespace VaciniaBot.config
         public ulong LogChannelId { get; set; }
         public ulong ConsoleChannelId { get; set; }
         public MySQLConfig MySQL { get; set; }
+
         public async Task ReadJson()
         {
             using (StreamReader sr = new StreamReader("config.json"))
             {
                 string json = await sr.ReadToEndAsync();
-                JSONStructure data = Newtonsoft.Json.JsonConvert.DeserializeObject<JSONStructure>(json);
+                JSONStructure data = JsonConvert.DeserializeObject<JSONStructure>(json);
 
                 Token = data.Token;
                 Prefix = data.Prefix;
@@ -27,6 +29,7 @@ namespace VaciniaBot.config
                 MySQL = data.MySQL;
             }
         }
+
         private class JSONStructure
         {
             public string Token { get; set; }
@@ -36,6 +39,7 @@ namespace VaciniaBot.config
             public ulong ConsoleChannelId { get; set; }
             public MySQLConfig MySQL { get; set; }
         }
+
         public class MySQLConfig
         {
             public string Server { get; set; }

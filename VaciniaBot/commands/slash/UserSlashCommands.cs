@@ -6,7 +6,6 @@ using DSharpPlus.SlashCommands;
 using DSharpPlus;
 using MySql.Data.MySqlClient;
 using VaciniaBot.config;
-using static System.Net.WebRequestMethods;
 
 namespace VaciniaBot.commands.slash
 {
@@ -30,6 +29,7 @@ namespace VaciniaBot.commands.slash
 
             Console.WriteLine($"Пользователь {ctx.User.Username} выполнил команду /say");
         }
+
         [SlashCommand("clear", "Удалить указанное количество сообщений в канале")]
         public async Task ClearCommand(InteractionContext ctx, [Option("количество", "Количество сообщений для удаления")] long amount)
         {
@@ -62,6 +62,7 @@ namespace VaciniaBot.commands.slash
                 Console.WriteLine($"Ошибка при удалении сообщений: {ex.Message}");
             }
         }
+
         [SlashCommand("players", "Показать полный список игроков")]
         public async Task PlayersCommand(InteractionContext ctx)
         {

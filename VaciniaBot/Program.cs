@@ -13,7 +13,6 @@ using System;
 using System.Threading;
 using System.IO;
 using System.Text;
-using System.Xml.Linq;
 using MySql.Data.MySqlClient;
 
 namespace VaciniaBot
@@ -23,14 +22,16 @@ namespace VaciniaBot
         public static DiscordClient Client { get; set; }
         public static CommandsNextExtension Commands { get; set; }
         public static bool IsBotReady = false;
+        private static JSONReader _jsonReader;
+
         public static async Task Main()
         {
-            var jsonReader = new JSONReader();
-            await jsonReader.ReadJson();
+            _jsonReader = new JSONReader();
+            await _jsonReader.ReadJson();
 
             var discordConfig = new DiscordConfiguration()
             {
-                Token = jsonReader.Token,
+                Token = _jsonReader.Token,
                 TokenType = TokenType.Bot,
                 Intents = DiscordIntents.All,
                 AutoReconnect = true
@@ -43,7 +44,7 @@ namespace VaciniaBot
 
             var commandsConfig = new CommandsNextConfiguration()
             {
-                StringPrefixes = new[] { jsonReader.Prefix },
+                StringPrefixes = new[] { _jsonReader.Prefix },
                 EnableMentionPrefix = true,
                 EnableDms = true,
                 EnableDefaultHelp = false
@@ -59,30 +60,27 @@ namespace VaciniaBot
             await Client.ConnectAsync();
             await Task.Delay(-1);
         }
+
         private static async Task Client_ComponentInteractionCreated(DiscordClient sender, ComponentInteractionCreateEventArgs args)
         {
-            var jsonReader = new JSONReader();
-            await jsonReader.ReadJson();
-
             if (args.Interaction.Data.CustomId == "ticket_dropdown")
             {
                 await ModalWindowTickets(sender, args);
             }
-            if (args.Interaction.Data.CustomId == "accept_button" || args.Interaction.Data.CustomId == "reject_button" || args.Interaction.Data.CustomId == "invite_button")
+            else if (args.Interaction.Data.CustomId == "accept_button" || args.Interaction.Data.CustomId == "reject_button" || args.Interaction.Data.CustomId == "invite_button")
             {
-                await WhiteListTicket(sender, args, jsonReader);
+                await WhiteListTicket(sender, args);
             }
-            if (args.Interaction.Data.CustomId == "delete_channel_button")
+            else if (args.Interaction.Data.CustomId == "delete_channel_button")
             {
-                await TranscriptTicket(sender, args, jsonReader);
-
-                await DeleteButtonDropdown(sender, args);
+                await TranscriptTicket(sender, args);
+                await DeleteChannelWithDelay(sender, args);
             }
         }
-        private static async Task DeleteButtonDropdown(DiscordClient sender, ComponentInteractionCreateEventArgs args)
+
+        private static async Task DeleteChannelWithDelay(DiscordClient sender, ComponentInteractionCreateEventArgs args)
         {
             await args.Interaction.DeferAsync();
-
             await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Канал будет удален через 10 секунд."));
 
             var cancellationTokenSource = new CancellationTokenSource();
@@ -98,7 +96,6 @@ namespace VaciniaBot
             });
 
             var cancelButton = new DiscordButtonComponent(ButtonStyle.Secondary, "cancel_delete_button", "Отменить удаление");
-
             var cancelMessage = new DiscordMessageBuilder()
                 .WithContent("Удаление канала через 10 секунд. Нажмите кнопку, чтобы отменить.")
                 .AddComponents(cancelButton);
@@ -110,14 +107,13 @@ namespace VaciniaBot
                 if (e.Interaction.Data.CustomId == "cancel_delete_button")
                 {
                     cancellationTokenSource.Cancel();
-
                     await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
                         new DiscordInteractionResponseBuilder().WithContent("Удаление канала отменено."));
-
                     await e.Interaction.Channel.DeleteMessageAsync(e.Message);
                 }
             };
         }
+
         private static async Task ModalWindowTickets(DiscordClient sender, ComponentInteractionCreateEventArgs args)
         {
             var selectedValue = args.Interaction.Data.Values[0];
@@ -125,19 +121,32 @@ namespace VaciniaBot
             switch (selectedValue)
             {
                 case "WhitelistRequest":
-                    var modal = new DiscordInteractionResponseBuilder().WithTitle("Заявка в WhiteList").WithCustomId("whitelist_modal").AddComponents(new TextInputComponent(label: "Ваш никнейм", customId: "nickname", placeholder: "Введите ваш никнейм", required: true)).AddComponents(new TextInputComponent(label: "Ваше имя", customId: "name", placeholder: "Введите ваше имя", required: true)).AddComponents(new TextInputComponent(label: "Ваш возраст", customId: "age", placeholder: "Введите ваш возраст", required: true)).AddComponents(new TextInputComponent(label: "Причина заявки", customId: "reason", placeholder: "Почему вы хотите попасть в WhiteList?", required: true)).AddComponents(new TextInputComponent(label: "Дополнительная информация", customId: "additional_info", placeholder: "Дополнительные сведения", required: false));
+                    var modal = new DiscordInteractionResponseBuilder()
+                        .WithTitle("Заявка в WhiteList")
+                        .WithCustomId("whitelist_modal")
+                        .AddComponents(new TextInputComponent(label: "Ваш никнейм", customId: "nickname", placeholder: "Введите ваш никнейм", required: true))
+                        .AddComponents(new TextInputComponent(label: "Ваше имя", customId: "name", placeholder: "Введите ваше имя", required: true))
+                        .AddComponents(new TextInputComponent(label: "Ваш возраст", customId: "age", placeholder: "Введите ваш возраст", required: true))
+                        .AddComponents(new TextInputComponent(label: "Причина заявки", customId: "reason", placeholder: "Почему вы хотите попасть в WhiteList?", required: true))
+                        .AddComponents(new TextInputComponent(label: "Дополнительная информация", customId: "additional_info", placeholder: "Дополнительные сведения", required: false));
 
                     await args.Interaction.CreateResponseAsync(InteractionResponseType.Modal, modal);
                     break;
 
                 case "ReportViolation":
-                    var modalReport = new DiscordInteractionResponseBuilder().WithTitle("Сообщить о нарушении").WithCustomId("report_modal").AddComponents(new TextInputComponent(label: "Никнейм нарушителя", customId: "violator_nickname", placeholder: "Введите никнейм нарушителя", required: true)).AddComponents(new TextInputComponent(label: "Описание нарушения", customId: "violation_description", placeholder: "Опишите нарушение", required: true)).AddComponents(new TextInputComponent(label: "Дополнительная информация", customId: "additional_info", placeholder: "Дополнительные сведения", required: false));
+                    var modalReport = new DiscordInteractionResponseBuilder()
+                        .WithTitle("Сообщить о нарушении")
+                        .WithCustomId("report_modal")
+                        .AddComponents(new TextInputComponent(label: "Никнейм нарушителя", customId: "violator_nickname", placeholder: "Введите никнейм нарушителя", required: true))
+                        .AddComponents(new TextInputComponent(label: "Описание нарушения", customId: "violation_description", placeholder: "Опишите нарушение", required: true))
+                        .AddComponents(new TextInputComponent(label: "Дополнительная информация", customId: "additional_info", placeholder: "Дополнительные сведения", required: false));
 
                     await args.Interaction.CreateResponseAsync(InteractionResponseType.Modal, modalReport);
                     break;
             }
         }
-        private static async Task WhiteListTicket(DiscordClient sender, ComponentInteractionCreateEventArgs args, JSONReader jsonReader)
+
+        private static async Task WhiteListTicket(DiscordClient sender, ComponentInteractionCreateEventArgs args)
         {
             await args.Interaction.DeferAsync();
 
@@ -146,11 +155,10 @@ namespace VaciniaBot
             var nickname = nicknameField?.Value;
 
             var guild = await sender.GetGuildAsync(args.Interaction.Guild.Id);
-
             var member = await guild.GetMemberAsync(args.Interaction.User.Id);
 
             bool isAdmin = member.Permissions.HasPermission(Permissions.Administrator) ||
-                           jsonReader.AdminRoles.Any(roleId => member.Roles.Any(role => role.Id == roleId));
+                           _jsonReader.AdminRoles.Any(roleId => member.Roles.Any(role => role.Id == roleId));
 
             if (!isAdmin)
             {
@@ -158,185 +166,60 @@ namespace VaciniaBot
                 return;
             }
 
+            var userIdField = embed.Fields.FirstOrDefault(f => f.Name == "UserID");
+            if (userIdField == null)
+            {
+                await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Ошибка: не удалось найти информацию о пользователе."));
+                return;
+            }
+
+            var userId = ulong.Parse(userIdField.Value);
+            var applicant = await guild.GetMemberAsync(userId);
+
             switch (args.Interaction.Data.CustomId)
             {
                 case "accept_button":
-                    try
-                    {
-                        var userIdField = embed.Fields.FirstOrDefault(f => f.Name == "UserID");
-                        if (userIdField == null)
-                        {
-                            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Ошибка: не удалось найти информацию о пользователе."));
-                            return;
-                        }
-
-                        var userId = ulong.Parse(userIdField.Value);
-
-                        var applicant = await guild.GetMemberAsync(userId);
-                        await applicant.SendMessageAsync("Ваша заявка на Whitelist была принята!");
-
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Заявка принята! Пользователь уведомлен."));
-
-                        var logChannel = await sender.GetChannelAsync(jsonReader.LogChannelId);
-                        if (logChannel != null)
-                        {
-                            string message = $"Заявка от пользователя {nickname} была принята.";
-                            await logChannel.SendMessageAsync(message);
-                        }
-
-                        var consoleChannel = await sender.GetChannelAsync(jsonReader.ConsoleChannelId);
-                        if (consoleChannel != null)
-                        {
-                            string message = $"whitelist add {nickname}";
-                            await consoleChannel.SendMessageAsync(message);
-                        }
-                        else
-                        {
-                            Console.WriteLine("Канал для консоли не найден.");
-                        }
-
-                        var connectionString = $"Server={jsonReader.MySQL.Server};Port={jsonReader.MySQL.Port};Database={jsonReader.MySQL.Database};User ID={jsonReader.MySQL.User};Password={jsonReader.MySQL.Password};";
-                        using (var connection = new MySqlConnection(connectionString))
-                        {
-                            await connection.OpenAsync();
-                            var command = new MySqlCommand($"INSERT INTO {jsonReader.MySQL.Table} (last_name) VALUES (@last_name)", connection);
-                            command.Parameters.AddWithValue("@last_name", nickname);
-
-                            int rowsAffected = await command.ExecuteNonQueryAsync();
-                            if (rowsAffected > 0)
-                            {
-                                Console.WriteLine($"Игрок {nickname} успешно добавлен в базу данных.");
-                            }
-                            else
-                            {
-                                Console.WriteLine("Ошибка при добавлении игрока в базу данных.");
-                            }
-                        }
-
-                        await TranscriptTicket(sender, args, jsonReader);
-
-                        var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
-                        var deleteMessage = new DiscordMessageBuilder().WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.").AddComponents(cancelButton);
-
-                        var deleteConfirmationMessage = await args.Interaction.Channel.SendMessageAsync(deleteMessage);
-
-                        var cancellationTokenSource = new CancellationTokenSource();
-                        var cancellationToken = cancellationTokenSource.Token;
-
-                        _ = Task.Run(async () =>
-                        {
-                            await Task.Delay(10000, cancellationToken);
-                            if (!cancellationToken.IsCancellationRequested)
-                            {
-                                await args.Interaction.Channel.DeleteAsync();
-                            }
-                        });
-
-                        sender.ComponentInteractionCreated += async (s, e) =>
-                        {
-                            if (e.Interaction.Data.CustomId == "cancel_delete_button" && e.Message.Id == deleteConfirmationMessage.Id)
-                            {
-                                cancellationTokenSource.Cancel();
-
-                                var deleteTicketButton = new DiscordButtonComponent(ButtonStyle.Danger, "manual_delete_button", "Удалить тикет");
-
-                                await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-                                    new DiscordInteractionResponseBuilder().WithContent("Удаление канала отменено.").AddComponents(deleteTicketButton));
-
-                                await deleteConfirmationMessage.DeleteAsync();
-                            }
-
-                            if (e.Interaction.Data.CustomId == "manual_delete_button")
-                            {
-                                await e.Interaction.Channel.DeleteAsync();
-                                await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-                                    new DiscordInteractionResponseBuilder().WithContent("Канал удален вручную.").AsEphemeral(true));
-                            }
-                        };
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Ошибка при обработке кнопки 'Принять': {ex.Message}");
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Произошла ошибка при обработке заявки."));
-                    }
+                    await applicant.SendMessageAsync("Ваша заявка на Whitelist была принята!");
+                    await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Заявка принята! Пользователь уведомлен."));
+                    await LogTicketAction(sender, $"Заявка от пользователя {nickname} была принята.");
+                    await ExecuteSQLCommand($"INSERT INTO {_jsonReader.MySQL.Table} (last_name) VALUES (@last_name)", new MySqlParameter("@last_name", nickname));
                     break;
 
                 case "reject_button":
-                    try
-                    {
-                        var userIdField = embed.Fields.FirstOrDefault(f => f.Name == "UserID");
-                        if (userIdField == null)
-                        {
-                            await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Ошибка: не удалось найти информацию о пользователе."));
-                            return;
-                        }
-
-                        var userId = ulong.Parse(userIdField.Value);
-
-                        var applicant = await guild.GetMemberAsync(userId);
-                        await applicant.SendMessageAsync("Ваша заявка на Whitelist была отклонена. Попробуйте позже");
-
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Заявка отклонена. Пользователь уведомлен."));
-
-                        var logChannel = await sender.GetChannelAsync(jsonReader.LogChannelId);
-                        if (logChannel != null)
-                        {
-                            string message = $"Заявка от пользователя {nickname} была принята.";
-                            await logChannel.SendMessageAsync(message);
-                        }
-
-                        await TranscriptTicket(sender, args, jsonReader);
-
-                        var cancelButton = new DiscordButtonComponent(ButtonStyle.Danger, "cancel_delete_button", "Отменить удаление");
-                        var deleteMessage = new DiscordMessageBuilder().WithContent("Канал будет удален через 10 секунд. Нажмите кнопку, чтобы отменить удаление.").AddComponents(cancelButton);
-
-                        var deleteConfirmationMessage = await args.Interaction.Channel.SendMessageAsync(deleteMessage);
-
-                        var cancellationTokenSource = new CancellationTokenSource();
-                        var cancellationToken = cancellationTokenSource.Token;
-
-                        _ = Task.Run(async () =>
-                        {
-                            await Task.Delay(10000, cancellationToken);
-                            if (!cancellationToken.IsCancellationRequested)
-                            {
-                                await args.Interaction.Channel.DeleteAsync();
-                            }
-                        });
-
-                        sender.ComponentInteractionCreated += async (s, e) =>
-                        {
-                            if (e.Interaction.Data.CustomId == "cancel_delete_button" && e.Message.Id == deleteConfirmationMessage.Id)
-                            {
-                                cancellationTokenSource.Cancel();
-
-                                var deleteTicketButton = new DiscordButtonComponent(ButtonStyle.Danger, "manual_delete_button", "Удалить тикет");
-
-                                await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-                                    new DiscordInteractionResponseBuilder().WithContent("Удаление канала отменено.").AddComponents(deleteTicketButton));
-
-                                await deleteConfirmationMessage.DeleteAsync();
-                            }
-
-                            if (e.Interaction.Data.CustomId == "manual_delete_button")
-                            {
-                                await e.Interaction.Channel.DeleteAsync();
-                                await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-                                    new DiscordInteractionResponseBuilder().WithContent("Канал удален вручную.").AsEphemeral(true));
-                            }
-                        };
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Ошибка при обработке кнопки 'Отклонить': {ex.Message}");
-                        await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Произошла ошибка при обработке заявки."));
-                    }
+                    await applicant.SendMessageAsync("Ваша заявка на Whitelist была отклонена. Попробуйте позже");
+                    await args.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("Заявка отклонена. Пользователь уведомлен."));
+                    await LogTicketAction(sender, $"Заявка от пользователя {nickname} была отклонена.");
                     break;
             }
+
+            await TranscriptTicket(sender, args);
+            await DeleteChannelWithDelay(sender, args);
         }
-        private static async Task TranscriptTicket(DiscordClient sender, ComponentInteractionCreateEventArgs args, JSONReader jsonReader)
+
+        private static async Task LogTicketAction(DiscordClient sender, string message)
         {
-            var logChannel = await sender.GetChannelAsync(jsonReader.LogChannelId);
+            var logChannel = await sender.GetChannelAsync(_jsonReader.LogChannelId);
+            if (logChannel != null)
+            {
+                await logChannel.SendMessageAsync(message);
+            }
+        }
+
+        private static async Task ExecuteSQLCommand(string query, params MySqlParameter[] parameters)
+        {
+            var connectionString = $"Server={_jsonReader.MySQL.Server};Port={_jsonReader.MySQL.Port};Database={_jsonReader.MySQL.Database};User ID={_jsonReader.MySQL.User};Password={_jsonReader.MySQL.Password};";
+            using (var connection = new MySqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                var command = new MySqlCommand(query, connection);
+                command.Parameters.AddRange(parameters);
+                await command.ExecuteNonQueryAsync();
+            }
+        }
+
+        private static async Task TranscriptTicket(DiscordClient sender, ComponentInteractionCreateEventArgs args)
+        {
+            var logChannel = await sender.GetChannelAsync(_jsonReader.LogChannelId);
             var messages = await args.Interaction.Channel.GetMessagesAsync();
             var logContent = new StringBuilder();
 
@@ -362,6 +245,7 @@ namespace VaciniaBot
             ticketInfoEmbed.AddField("Имя тикета", ticketName, inline: true);
             ticketInfoEmbed.AddField("Раздел тикета", ticketSection, inline: true);
             ticketInfoEmbed.AddField("Пользователи в переписке", string.Join(", ", usersInConversation), inline: false);
+
             logContent.AppendLine("<!DOCTYPE html>");
             logContent.AppendLine("<html lang=\"ru\">");
             logContent.AppendLine("<head>");
@@ -443,25 +327,20 @@ namespace VaciniaBot
             if (logChannel != null)
             {
                 var embedMessage = new DiscordMessageBuilder().WithEmbed(ticketInfoEmbed);
-
                 await logChannel.SendMessageAsync(embedMessage);
 
                 using (var fs = new FileStream(logFileName, FileMode.Open, FileAccess.Read))
                 {
                     var msgBuilder = new DiscordMessageBuilder().WithContent("Лог сообщений из канала:").AddFile(fs);
-
                     await logChannel.SendMessageAsync(msgBuilder);
                 }
             }
 
             File.Delete(logFileName);
         }
+
         private static async Task CreateTicket(DiscordClient sender, ModalSubmitEventArgs args)
         {
-            var jsonReader = new JSONReader();
-            await jsonReader.ReadJson();
-            var adminRoles = jsonReader.AdminRoles;
-
             if (args.Interaction.Data.CustomId == "whitelist_modal")
             {
                 var nickname = args.Values["nickname"];
@@ -486,17 +365,15 @@ namespace VaciniaBot
                 }
 
                 var guild = await sender.GetGuildAsync(args.Interaction.Guild.Id);
-
                 var member = await guild.GetMemberAsync(args.Interaction.User.Id);
 
                 var overwrites = new List<DiscordOverwriteBuilder>
-        {
-            new DiscordOverwriteBuilder(guild.EveryoneRole).Deny(Permissions.AccessChannels),
+                {
+                    new DiscordOverwriteBuilder(guild.EveryoneRole).Deny(Permissions.AccessChannels),
+                    new DiscordOverwriteBuilder(member).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
+                };
 
-            new DiscordOverwriteBuilder(member).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
-        };
-
-                foreach (var roleId in adminRoles)
+                foreach (var roleId in _jsonReader.AdminRoles)
                 {
                     var role = guild.GetRole(roleId);
                     if (role != null)
@@ -530,31 +407,15 @@ namespace VaciniaBot
                 var additionalInfo = args.Values["additional_info"];
 
                 var guild = await sender.GetGuildAsync(args.Interaction.Guild.Id);
-
                 var member = await guild.GetMemberAsync(args.Interaction.User.Id);
 
                 var overwrites = new List<DiscordOverwriteBuilder>
-        {
-            new DiscordOverwriteBuilder(guild.EveryoneRole).Deny(Permissions.AccessChannels),
-
-            new DiscordOverwriteBuilder(member).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
-        };
-
-                foreach (var roleId in adminRoles)
                 {
-                    var role = guild.GetRole(roleId);
-                    if (role != null)
-                    {
-                        overwrites.Add(new DiscordOverwriteBuilder(role).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory));
-                    }
-                }
+                    new DiscordOverwriteBuilder(guild.EveryoneRole).Deny(Permissions.AccessChannels),
+                    new DiscordOverwriteBuilder(member).Allow(Permissions.AccessChannels | Permissions.SendMessages | Permissions.ReadMessageHistory)
+                };
 
-                await jsonReader.ReadJson();
-
-                var everyoneRole = guild.EveryoneRole;
-                overwrites.Add(new DiscordOverwriteBuilder(everyoneRole).Deny(Permissions.AccessChannels));
-
-                foreach (var roleId in adminRoles)
+                foreach (var roleId in _jsonReader.AdminRoles)
                 {
                     var role = guild.GetRole(roleId);
                     if (role != null)
@@ -596,6 +457,7 @@ namespace VaciniaBot
                     new DiscordInteractionResponseBuilder().WithContent($"Ваша жалоба успешно отправлена! Канал для жалобы: {channel.Mention}").AsEphemeral(true));
             }
         }
+
         private static Task ClientOnReady(DiscordClient sender, ReadyEventArgs args)
         {
             Program.IsBotReady = true;

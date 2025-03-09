@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using DSharpPlus;
 using DSharpPlus.SlashCommands;
 using DSharpPlus.Entities;
 using VaciniaBot.config;
 using MySql.Data.MySqlClient;
+using System;
 
 namespace VaciniaBot.commands.slash
 {
@@ -15,10 +15,10 @@ namespace VaciniaBot.commands.slash
         public async Task TestSlashCommand(InteractionContext ctx)
         {
             var options = new List<DiscordSelectComponentOption>
-        {
-            new DiscordSelectComponentOption("Отправить заявку в WhiteList", "WhitelistRequest", "Выберите, чтобы отправить заявку в WhiteList"),
-            new DiscordSelectComponentOption("Сообщить о нарушении", "ReportViolation", "Выберите, чтобы сообщить о нарушении")
-        };
+            {
+                new DiscordSelectComponentOption("Отправить заявку в WhiteList", "WhitelistRequest", "Выберите, чтобы отправить заявку в WhiteList"),
+                new DiscordSelectComponentOption("Сообщить о нарушении", "ReportViolation", "Выберите, чтобы сообщить о нарушении")
+            };
 
             var dropdown = new DiscordSelectComponent("ticket_dropdown", "Выберите действие", options);
 
@@ -31,6 +31,7 @@ namespace VaciniaBot.commands.slash
 
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embedMessage).AddComponents(dropdown));
         }
+
         [SlashCommand("removepassword", "Удалить пароль у игрока")]
         public async Task RemovePasswordCommand(InteractionContext ctx, [Option("Никнейм", "Никнейм игрока")] string nickname)
         {

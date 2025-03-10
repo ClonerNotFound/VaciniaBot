@@ -36,7 +36,7 @@
 }
 ```
     
-## License
+## Лицензия
 
 [GPLv3](https://opensource.org/license/lgpl-3-0)
 
@@ -44,11 +44,11 @@
 
 
 
-## Authors
+## Авторы
 
 - [@clonernotfound](https://www.github.com/clonernotfound)
 
 
-## Support
+## Поддержка
 
 Для поддержки используйте clonernotfound@gmail.com или [Issues](https://github.com/ClonerNotFound/VaciniaBot/issues).
